@@ -41,26 +41,7 @@ The public data is stored in `output.txt`. I used the following Python script (`
 
 ```python
 #!/usr/bin/env python3
-"""
-MARIO CTF solver — condensed.
 
-Bug: the "scrambling" transform (monomial_scramble) is only a
-permutation + per-coordinate scaling, not a full random linear map.
-So the public reports B_i = Oil_i + a_i*g still live in a small
-(25-dim) hidden subspace, and pairs of reports that happen to share
-the same mask a_i cancel g out, landing exactly in the 24-dim Oil
-subspace on which every public polynomial vanishes.
-
-Recovery:
- 1. For every pair (i,j), test x = B_i XOR B_j against all public
-    quadratics. If eval(poly, x) == 0 for all 72 of them, x is (very
-    likely) an Oil-space vector.
- 2. Collect independent such vectors until we have 24 (= full Oil
-    subspace).
- 3. Row-reduce this basis exactly like the challenge does before
-    HKDF (derive_key), reproducing the same key material.
- 4. HKDF -> AES-GCM key -> decrypt the flag.
-"""
 import json, sys
 from pathlib import Path
 try:
