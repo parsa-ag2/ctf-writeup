@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 N, D = 96, 24
 MOD_POLY = 0x13
 
-# --- GF(16) arithmetic ---
+
 def gf_mul(a, b):
     out = 0
     while b:
@@ -75,7 +75,9 @@ def row_reduce(rows):
     return [row for row in mat if any(row)]
 
 def rank_add(basis, vec):
+    
     """Try to insert vec into basis (list of already-echelon rows). Returns True if it raised the rank."""
+    
     v = vec[:]
     for row in basis:
         piv = next(k for k, x in enumerate(row) if x)
@@ -87,13 +89,13 @@ def rank_add(basis, vec):
     basis.append(v)
     return True
 
-# --- load challenge output ---
+
 data = json.loads(Path(sys.argv[1] if len(sys.argv) > 1 else "output.txt").read_text())
 polys = [unpack_poly(p) for p in data["A"]]
 B = [[int(x) for x in row] for row in data["B"]]
 salt_hex, nonce_hex, ct_hex = data["C"]
 
-# --- recover the Oil subspace from same-mask report pairs ---
+
 oil_basis = []
 for i in range(len(B)):
     for j in range(i + 1, len(B)):
@@ -109,7 +111,7 @@ for i in range(len(B)):
 
 assert len(oil_basis) == D, "failed to recover full oil space"
 
-# --- reproduce the challenge's key derivation ---
+
 material = bytes(x for row in row_reduce(oil_basis) for x in row)
 key = HKDF(material, 32, bytes.fromhex(salt_hex), SHA256, context=b"MARIO")
 
