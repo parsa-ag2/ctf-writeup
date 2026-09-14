@@ -1,8 +1,3 @@
----
-
-### `ASIS-CTF-2026/Profile/README.md`
-
-```markdown
 # Profile — ASIS CTF 2026
 
 **Room / Challenge:** Profile (Web)
@@ -28,9 +23,11 @@ The goal was to obtain the secret eSIM profile and extract the flag from it — 
 
 Instance:
 91.107.243.187:80
-textDecoding the QR produced an **LPA activation code**:
+
+Decoding the QR produced an **LPA activation code**:
 LPA:1$dpp.asisctf.com$
-textSo the backend is a **GSMA SGP.22** SM-DP+ style service at `dpp.asisctf.com`, speaking the **ES9+** interface.
+
+So the backend is a **GSMA SGP.22** SM-DP+ style service at `dpp.asisctf.com`, speaking the **ES9+** interface.
 
 Relevant endpoints used during the solve:
 
