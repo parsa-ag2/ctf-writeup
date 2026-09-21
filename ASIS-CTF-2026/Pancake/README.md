@@ -13,178 +13,141 @@
 * **Points:** `32`
 * **Date:** `29-08-2026` / `7/6/1405`
 
+---
+
 ## Goal
 
-The goal of this challenge was to recover the flag from the data provided in `challenge.json`.
+The challenge uses a custom AES-based construction where a collision in an internal value causes the same encryption state to be derived for two different nonces.
 
-After reading `pancake.py`, I noticed that the challenge generates a random 32-bit `seed` and derives `k1` from it.
-
-Since the seed is only 32 bits, the search space is `2^32`, making a brute-force attack possible.
+The goal is to exploit this collision and recover the flag.
 
 ---
 
 ## 1. Recovering the Seed
 
-The challenge provides a `hint` in `challenge.json` that is derived from the secret seed.
+The challenge provides a SHA-256 based hint derived from a 32-bit seed.
 
-By reading `pancake.py`, we can see that the hint is generated using SHA-256.
-
-Therefore, we can brute-force all possible 32-bit seeds and compare the generated hint with the value provided by the challenge.
+The seed space is only `2^32`, so I brute-forced all possible seeds until the generated hint matched the value in `challenge.json`.
 
 The recovered seed was:
 
-`583324655`
+```text
+583324655
+```
 
-This gave us:
+Using this seed, I derived:
 
-`k1 = e9d134ee048cf7ee519446c8cf25e9e4cbe62e93407b65e9e9ee4b8fa100e3d0`
+```text
+k1 =
+e9d134ee048cf7ee519446c8cf25e9e4cbe62e93407b65e9e9ee4b8fa100e3d0
+```
 
 ---
 
 ## 2. Finding the Collision
 
-After recovering `k1`, I looked at how the internal state was generated.
+The challenge derives an internal value `j` from:
 
-The challenge calculates a value called `j` from `n2` using AES.
+```text
+AES_k1(n2 || 0^32)
+```
 
-This value is then used to derive several other values:
+Then it searches for another nonce `alt` such that:
 
-* `w1`
-* `w2`
-* `r1`
-* `r2`
+```text
+AES_k1(alt || sep)
+```
 
-These values are eventually used by the KDF to derive the cryptographic state.
+produces the same upper 96 bits while the lower 32 bits are zero.
 
-The important part is that we can find another nonce, `alt`, that produces the same `j` value:
+I brute-forced the 32-bit `sep` value and found:
 
-`j(n2) = j(alt)`
+```text
+alt =
+a5720dc7719f529e8e9cb565
+```
 
-To find this collision, I brute-forced a 32-bit `sep` value.
+The resulting collision gives the same `j` value for both nonces.
 
-The idea is to keep the known 96-bit value fixed and try every possible 32-bit suffix.
+Therefore:
 
-For each candidate, we decrypt the resulting AES block.
+```text
+w1, w2, r1, r2
+```
 
-If the plaintext ends with four zero bytes, the upper 96 bits of the plaintext give us the colliding nonce.
+are also identical.
 
-I implemented this brute-force search in `collision.c`.
-
-> **Note:** I used AI assistance for implementing the C brute-force code.
-
-The collision we found was:
-
-`alt = a5720dc7719f529e8e9cb565`
-
-The corresponding `j` value was:
-
-`b33d490e229d120ac40fe003`
+This causes the derived encryption state to be reused.
 
 ---
 
 ## 3. Recovering the Keystream
 
-The challenge contains an encrypted object called `z`.
-
-Using the recovered `k1`, `n1`, and `alt`, we can derive the key and IV required to decrypt the sealed ticket.
-
-This part is implemented in `solve.py`.
-
-After decrypting `z`, we get a ticket containing `x.c`.
-
-The plaintext corresponding to this ciphertext is known and consists of zero bytes.
-
-For a stream-like encryption:
-
-`C = P XOR K`
+The challenge uses AES-GCM and encrypts a known plaintext consisting of 128 zero bytes.
 
 Since:
 
-`P = 0`
+```text
+ciphertext = plaintext XOR keystream
+```
 
-we get:
+and the plaintext is all zeroes:
 
-`C = K`
+```text
+ciphertext = keystream
+```
 
-Therefore, `x.c` directly gives us the keystream.
+So the ciphertext inside the decrypted ticket directly gives us the GCM keystream.
+
+First, I decrypted `z` using the sealed-ticket key derived from `k1`, `n1`, and `alt`.
+
+The decrypted ticket contains the known plaintext ciphertext:
+
+```text
+ticket["x"]["c"]
+```
+
+This gives us the keystream needed to decrypt `y`.
 
 ---
 
 ## 4. Recovering the Flag
 
-At this point we have:
+Finally, I XORed the ciphertext from `y` with the recovered keystream:
 
-* The ciphertext `y.c`
-* The keystream recovered from `x.c`
+```text
+flag = y.c XOR keystream
+```
 
-Using:
-
-`P = C XOR K`
-
-we can recover the plaintext of `y.c`.
-
-So we XOR `y.c` with the recovered keystream.
-
-This gives us the flag.
+This recovered the flag.
 
 ---
 
 ## 5. Files
 
-The final solver is available in:
+* `challenge.json` — challenge data
+* `pancake.py` — original challenge code
+* `solve.py` — final solver
+* `collision.c` — C brute-force collision search → **AI**
 
-`solve.py`
+### About `collision.c`
 
-The collision brute-force implementation is:
+I used C with OpenSSL to brute-force the 32-bit `sep` space efficiently.
 
-`collision.c`
-
-The original challenge implementation is:
-
-`pancake.py`
+AI was used to help implement the C brute-force search and the OpenSSL-related code.
 
 ---
 
 ## Flag
 
-`ASIS{paNc4kE_v3_Lo5t_!t5_n4mE_8Ut___n0T___iTs_89uG!}`
+```text
+ASIS{paNc4kE_v3_Lo5t_!t5_n4mE_8Ut___n0T___iTs_89uG!}
+```
 
 ---
 
 ## Conclusion
 
-The complete attack path was:
+The main idea was to find a collision in the challenge's internal AES-derived state.
 
-`32-bit seed`
-
-↓
-
-`Brute-force seed`
-
-↓
-
-`Recover k1`
-
-↓
-
-`Find AES collision`
-
-↓
-
-`Recover alt`
-
-↓
-
-`Decrypt sealed ticket`
-
-↓
-
-`Recover keystream from known plaintext`
-
-↓
-
-`XOR with y.c`
-
-↓
-
-`Recover flag`
+The collision caused the same GCM encryption state to be reused, allowing the known plaintext inside the ticket to reveal the keystream. XORing this keystream with the target ciphertext then recovered the flag.
