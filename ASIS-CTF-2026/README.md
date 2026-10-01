@@ -26,8 +26,8 @@ This was our **first time participating in a CTF**, and it was a great opportuni
 
 We solved the following challenges from the **Crypto** category:
 
-* [x] **Headache**
-* [x] **Less is More**
+* [x] **Fence**
+* [x] **Linchan**
 * [x] **Mario**
 * [x] **Pancake**
 * [x] **Hackel**
