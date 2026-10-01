@@ -15,6 +15,14 @@
 
 ---
 
+## Requirements
+
+* `pycryptodome`
+* `openssl`
+* `gcc`
+
+---
+
 ## Goal
 
 The challenge uses a custom AES-based construction where a collision in an internal value causes the same encryption state to be derived for two different nonces.
